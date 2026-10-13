@@ -126,14 +126,26 @@ document.getElementById("form").addEventListener("submit", async (e) => {
     const zipFiles = fflate.unzipSync(new Uint8Array(zipBytes));
 
     // 5. Transférer les fichiers au service worker
-    await navigator.serviceWorker.register("sw.js");
-    const reg = await navigator.serviceWorker.ready;
-    const filesObj = {}; const transfer = [];
-    for (const [name, u8] of Object.entries(zipFiles)) {
-      const buf = u8.buffer.slice(u8.byteOffset, u8.byteOffset + u8.byteLength);
-      filesObj[name] = buf; transfer.push(buf);
+    const reg = await navigator.serviceWorker.register("sw.js");
+    await navigator.serviceWorker.ready;
+    // Première visite : attendre que le SW contrôle la page,
+    // sinon la requête de l'iframe contourne le SW (404 réseau).
+    if (!navigator.serviceWorker.controller) {
+      await new Promise((resolve) =>
+        navigator.serviceWorker.addEventListener("controllerchange", resolve, { once: true }));
     }
-    reg.active.postMessage({ files: filesObj }, transfer);
+    const filesObj = {};
+    for (const [name, u8] of Object.entries(zipFiles)) {
+      filesObj[name] = u8.buffer.slice(u8.byteOffset, u8.byteOffset + u8.byteLength);
+    }
+    // Envoyer à TOUTES les instances du SW : lors d'une mise à jour,
+    // c'est parfois la nouvelle instance (encore vide) qui intercepte.
+    const workers = [
+      navigator.serviceWorker.controller, reg.active, reg.waiting, reg.installing,
+    ].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i);
+    for (const w of workers) {
+      w.postMessage({ files: filesObj });
+    }
 
     // 6. Afficher l'application (servie par le service worker)
     const frame = document.getElementById("app");
@@ -156,6 +168,10 @@ SW_JS = """/* Service worker : sert les fichiers déchiffrés (en mémoire) sous
 
 const files = new Map();
 
+// Prendre le contrôle immédiatement, même à la première visite
+self.addEventListener("install", (e) => e.waitUntil(self.skipWaiting()));
+self.addEventListener("activate", (e) => e.waitUntil(self.clients.claim()));
+
 self.addEventListener("message", (event) => {
   const data = event.data;
   if (data && data.files) {
@@ -163,6 +179,9 @@ self.addEventListener("message", (event) => {
     for (const [name, buf] of Object.entries(data.files)) {
       files.set(name, new Uint8Array(buf));
     }
+    const keys = [...files.keys()];
+    console.info("[sw] fichiers servis :", keys.slice(0, 5).join(", "),
+                 keys.length > 5 ? "…" : "");
   }
 });
 
@@ -191,7 +210,14 @@ self.addEventListener("fetch", (event) => {
   if (name.endsWith("/")) name += "index.html";
   try { name = decodeURIComponent(name); } catch (_) {}
 
-  const data = files.get(name);
+  let data = files.get(name);
+  if (!data) {
+    // Tolérance : l'app peut être imbriquée dans un sous-dossier du zip
+    // (ex. build/index.html au lieu de index.html)
+    for (const [k, v] of files) {
+      if (k === name || k.endsWith("/" + name)) { data = v; break; }
+    }
+  }
   if (!data) {
     event.respondWith(new Response("Not found", { status: 404 }));
     return;

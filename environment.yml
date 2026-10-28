@@ -2,5 +2,12 @@ name: protected_website
 channels:
   - conda-forge
 dependencies:
+# for the marimo export
+  - pip
+  - uv
+  - pip:
+      - "marimo[recommended]"
+      - playwright # needed if you want to create an offline WASM export.
+# for the protected website creation
   - python=3.12
   - cryptography

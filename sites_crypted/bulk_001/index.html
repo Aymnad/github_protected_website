@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>bulk_001</title>
+<style>
+  :root { color-scheme: light dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: #f4f5f7; color: #1c1e21;
+  }
+  .card {
+    background: #fff; border-radius: 14px; padding: 2.2rem 2.4rem;
+    max-width: 420px; width: calc(100% - 2rem);
+    box-shadow: 0 6px 30px rgba(0,0,0,.09);
+  }
+  h1 { font-size: 1.35rem; margin: 0 0 .6rem; }
+  p.info { color: #556; margin: 0 0 1.4rem; line-height: 1.5; }
+  input[type="password"] {
+    width: 100%; padding: .75rem .9rem; font-size: 1rem;
+    border: 1.5px solid #c9ccd1; border-radius: 8px; outline: none;
+  }
+  input[type="password"]:focus { border-color: #4a6cf7; }
+  button {
+    margin-top: .9rem; width: 100%; padding: .75rem; font-size: 1rem; font-weight: 600;
+    color: #fff; background: #4a6cf7; border: none; border-radius: 8px; cursor: pointer;
+  }
+  button:disabled { opacity: .55; cursor: wait; }
+  .error { color: #b3261e; margin-top: .7rem; min-height: 1.2em; font-size: .92rem; }
+  #app { position: fixed; inset: 0; width: 100vw; height: 100vh; border: none; display: none; }
+</style>
+</head>
+<body>
+<main class="card" id="gate">
+  <h1>bulk_001</h1>
+  <p class="info">Cette application est réservée aux personnes disposant d'un code d'accès.<br>Pour l'obtenir, contactez l'administrateur.</p>
+  <form id="form">
+    <input type="password" id="code" placeholder="Code d'accès" autocomplete="off" autofocus>
+    <button id="go" type="submit">Déverrouiller</button>
+    <div class="error" id="err"></div>
+  </form>
+</main>
+<iframe id="app" title="Application"></iframe>
+<script src="https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js"></script>
+<script>
+"use strict";
+
+// Doit correspondre à ITERATIONS dans protected_website.py
+const ITERATIONS = 200000;
+
+document.getElementById("form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById("go");
+  const err = document.getElementById("err");
+  const code = document.getElementById("code").value;
+  err.textContent = "";
+  btn.disabled = true; btn.textContent = "Déverrouillage…";
+  try {
+    if (typeof fflate === "undefined") throw new Error("lib manquante");
+
+    // 1. Récupérer le contenu chiffré : [sel: 16][iv: 12][chiffré]
+    const resp = await fetch("app.enc");
+    if (!resp.ok) throw new Error("fetch");
+    const data = new Uint8Array(await resp.arrayBuffer());
+    const salt = data.slice(0, 16);
+    const iv   = data.slice(16, 28);
+    const ct   = data.slice(28);
+
+    // 2. Dériver la clé depuis le code saisi
+    const enc = new TextEncoder();
+    const base = await crypto.subtle.importKey("raw", enc.encode(code), "PBKDF2", false, ["deriveKey"]);
+    const key = await crypto.subtle.deriveKey(
+      { name: "PBKDF2", salt, iterations: ITERATIONS, hash: "SHA-256" },
+      base, { name: "AES-GCM", length: 256 }, false, ["decrypt"]);
+
+    // 3. Déchiffrer — un mauvais code fait échouer decrypt()
+    const zipBytes = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, ct);
+
+    // 4. Décompresser en mémoire
+    const zipFiles = fflate.unzipSync(new Uint8Array(zipBytes));
+
+    // 5. Transférer les fichiers au service worker
+    const reg = await navigator.serviceWorker.register("sw.js");
+    await navigator.serviceWorker.ready;
+    // Première visite : attendre que le SW contrôle la page,
+    // sinon la requête de l'iframe contourne le SW (404 réseau).
+    if (!navigator.serviceWorker.controller) {
+      await new Promise((resolve) =>
+        navigator.serviceWorker.addEventListener("controllerchange", resolve, { once: true }));
+    }
+    const filesObj = {};
+    for (const [name, u8] of Object.entries(zipFiles)) {
+      filesObj[name] = u8.buffer.slice(u8.byteOffset, u8.byteOffset + u8.byteLength);
+    }
+    // Envoyer à TOUTES les instances du SW : lors d'une mise à jour,
+    // c'est parfois la nouvelle instance (encore vide) qui intercepte.
+    const workers = [
+      navigator.serviceWorker.controller, reg.active, reg.waiting, reg.installing,
+    ].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i);
+    for (const w of workers) {
+      w.postMessage({ files: filesObj });
+    }
+
+    // 6. Afficher l'application (servie par le service worker)
+    const frame = document.getElementById("app");
+    frame.src = "app/";
+    frame.style.display = "block";
+    document.getElementById("gate").style.display = "none";
+  } catch (_) {
+    err.textContent = "Code invalide ou erreur de chargement.";
+  } finally {
+    btn.disabled = false; btn.textContent = "Déverrouiller";
+  }
+});
+</script>
+</body>
+</html>

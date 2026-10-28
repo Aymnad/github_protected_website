@@ -1,3 +1,7 @@
+# remove the different builds as they are heavy
+/sites
+/sites_crypted
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]

@@ -1,3 +1,42 @@
+# To DO!
+
+- there are two .py files and I do not know why. 
+- I should add a podman or a conda environement that performs the webassembly export here instead of in the other repository. So I need a folder with the exported sites, and another one with the crypted ones
+   - hence, I should also add in the gitignore the different project becuase I cannot push everything it is too heavy
+- I added /tools scripts from the website Page, they are supposed to change the favicon etc so that everyting is done here but need to test it
+- there is a /vendor folder and I do not know what it does now
+- I this is is written "dévérouiller" in french on the webpage
+- je crois que le code make\_icons ne devrais pas rester là. je en l'ai pas bien vu marcher pour le site marimo mais en tout cas il semble marcher pour le site tout cours
+
+ok it seems that the real file is générateur\_etc.py not the other one
+
+
+
+For an interactive website that works online:
+marimo export html-wasm notebook.py -o dist --mode run
+
+
+For a more self-contained export, bundling the browser runtime and compatible Python packages so the site can run without internet access to those resources:
+python -m playwright install chromium
+marimo export html-wasm notebook.py -o dist --mode run --offline
+
+
+The offline option still requires internet access during export to retrieve the necessary runtime and packages. Your exported directory includes the assets needed by the site.
+
+
+
+
+### Comment utiliser le script pour l'export
+Comment l'utiliser
+Enregistre le script, par exemple sous tools/export_notebook.sh, puis rends-le exécutable :
+chmod +x tools/export_notebook.sh
+
+
+Lance-le depuis ton terminal :
+./tools/export_notebook.sh
+
+-
+
 # github_protected_website
 Makes crypted github pages website
 

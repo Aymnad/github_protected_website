@@ -6,7 +6,7 @@ Le dossier source (ex. export marimo `html-wasm`) est compressé (zip)
 puis chiffré (AES-256-GCM, clé dérivée du code via PBKDF2-SHA256,
 200 000 itérations). Le site généré contient :
 
-    sites/<nom>/
+    sites_crypted/<nom>/
     ├── index.html   page d'entrée (informations + demande du code)
     ├── app.enc      contenu chiffré — illisible sans le code
     ├── sw.js        service worker servant les fichiers déchiffrés en mémoire
@@ -255,7 +255,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("source", nargs="?", help="dossier à chiffrer (ex. export marimo html-wasm)")
     p.add_argument("name", nargs="?", help="nom du site (lettres, chiffres, - et _)")
     p.add_argument("code", nargs="?", help="code d'accès (si absent : demande masquée)")
-    p.add_argument("--out", default="sites", help="dossier de sortie (défaut : sites)")
+    p.add_argument("--out", default="sites_crypted", help="dossier de sortie (défaut : sites)")
     p.add_argument("--title", help="titre affiché sur la page d'entrée (défaut : nom du site)")
     p.add_argument("--info", help="texte d'information affiché (HTML autorisé)")
     p.add_argument("--generate-code", action="store_true",

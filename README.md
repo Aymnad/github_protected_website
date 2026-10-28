@@ -1,47 +1,4 @@
-# To DO!
-
-- there are two .py files and I do not know why. 
-- I should add a podman or a conda environement that performs the webassembly export here instead of in the other repository. So I need a folder with the exported sites, and another one with the crypted ones
-   - hence, I should also add in the gitignore the different project becuase I cannot push everything it is too heavy
-- I added /tools scripts from the website Page, they are supposed to change the favicon etc so that everyting is done here but need to test it
-- there is a /vendor folder and I do not know what it does now
-- I this is is written "dévérouiller" in french on the webpage
-- je crois que le code make\_icons ne devrais pas rester là. je en l'ai pas bien vu marcher pour le site marimo mais en tout cas il semble marcher pour le site tout cours
-
-ok it seems that the real file is générateur\_etc.py not the other one
-
-
-
-For an interactive website that works online:
-marimo export html-wasm notebook.py -o dist --mode run
-
-
-For a more self-contained export, bundling the browser runtime and compatible Python packages so the site can run without internet access to those resources:
-python -m playwright install chromium
-marimo export html-wasm notebook.py -o dist --mode run --offline
-
-
-The offline option still requires internet access during export to retrieve the necessary runtime and packages. Your exported directory includes the assets needed by the site.
-
-
-
-
-### Comment utiliser le script pour l'export
-Comment l'utiliser
-Enregistre le script, par exemple sous tools/export_notebook.sh, puis rends-le exécutable :
-chmod +x tools/export_notebook.sh
-
-
-Lance-le depuis ton terminal :
-./tools/export_notebook.sh
-
--
-
-# github_protected_website
-Makes crypted github pages website
-
-# protected_website — sites chiffrés pour GitHub Pages
-
+#  github_protected_website
 Génère autant de sites protégés par code que nécessaire, à partir d'autant de
 dossiers sources (ex. exports marimo `html-wasm`). Chaque site est un dossier
 indépendant, prêt à copier dans un repo GitHub.
@@ -59,10 +16,14 @@ indépendant, prêt à copier dans un repo GitHub.
 ## Structure du projet
 
 ```
-protected_website/
-├── protected_website.py    # le générateur (ce fichier)
+github_protected_website/
+├── export_notebook.sh      # script pour l'export de notebook vers site marimo
+├── protected_website.py    # le générateur de fichiers crypté 
 ├── README.md
-└── sites/                  # créé automatiquement — c'est ce qui est publié
+└── sites/                  # export des notebooks marimo
+│   ├── app-alpha/
+│   └── app-beta/
+└── sites_crypted/          # créé automatiquement — c'est ce qui est publié
     ├── app-alpha/
     │   ├── index.html      # page d'entrée (titre, infos, demande du code)
     │   ├── app.enc         # contenu chiffré
@@ -72,61 +33,28 @@ protected_website/
         └── … (même structure)
 ```
 
-## Environement
-
-Puis :
-bash
-Copier
-
-conda env create -f environment.yml
-conda activate protected_website
-
-
-
-
-Ensuite, workflow complet dans cet environnement :
-bash
-
-python protected_website.py build/ app-alpha --generate-code
-
-
-
-
-## Utilisation
+## Environnement
 
 ```bash
-pip install cryptography
+# création de l'environnement:
+conda env create -f environment.yml
 
-# Mode interactif (demande chemin, nom, code masqué) :
-python protected_website.py
-
-# Ou en ligne de commande :
-python protected_website.py build/ app-alpha "MON-CODE"
-
-# Générer un code aléatoire (recommandé, 16+ caractères) :
-python protected_website.py build/ app-alpha --generate-code
-
-# Personnaliser la page d'entrée :
-python protected_website.py build/ app-alpha "MON-CODE" \
-    --title "Outil interne" \
-    --info "Réservé à l'équipe. Contactez Aymeric pour le code."
+# activation de l'environnement:
+conda activate protected_website
 ```
 
-## Déployer sur GitHub Pages
+## Comment utiliser le script pour l'export
 
-1. Créez un repo GitHub (public pour Pages gratuit).
-2. Copiez chaque dossier `sites/<nom>/` dans le repo, par exemple tel quel :
-   ```
-   mon-repo/
-   ├── app-alpha/
-   └── app-beta/
-   ```
-3. Settings → Pages → Deploy from a branch → `main`, dossier racine.
-4. URLs obtenues :
-   - `https://<user>.github.io/mon-repo/app-alpha/`
-   - `https://user.github.io/mon-repo/app-beta/`
+```bash
 
-Chaque site fonctionne indépendamment avec son propre code.
+# rendre le script exécutable :
+chmod +x tools/export_notebook.sh
+
+
+# Lance-le depuis ton terminal :
+./export_notebook.sh
+```
+
 
 ## Organiser les codes
 

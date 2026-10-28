@@ -39,8 +39,8 @@
   <h1>{{TITLE}}</h1>
   <p class="info">{{INFO}}</p>
   <form id="form">
-    <input type="password" id="code" placeholder="Code d'accès" autocomplete="off" autofocus>
-    <button id="go" type="submit">Déverrouiller</button>
+    <input type="password" id="code" placeholder="Code" autocomplete="off" autofocus>
+    <button id="go" type="submit">Unlock</button>
     <div class="error" id="err"></div>
   </form>
 </main>
@@ -101,7 +101,7 @@ document.getElementById("form").addEventListener("submit", async (e) => {
   } catch (_) {
     err.textContent = "Code invalide ou erreur de chargement.";
   } finally {
-    btn.disabled = false; btn.textContent = "Déverrouiller";
+    btn.disabled = false; btn.textContent = "Unlock";
   }
 });
 </script>
